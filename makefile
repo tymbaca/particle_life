@@ -1,2 +1,2 @@
 run:
-	odin run . -out app.bin
+	odin run . -out:app.bin
