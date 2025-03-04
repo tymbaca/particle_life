@@ -1,0 +1,3 @@
+[submodule "lib/ecs"]
+	path = lib/ecs
+	url = git@github.com:tymbaca/ecs.git
