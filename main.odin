@@ -1,7 +1,8 @@
 package main
 
+import "core:testing"
 import "core:fmt"
-import "lib/ecs"
+// import "lib/ecs"
 import "base:intrinsics"
 import rl "vendor:raylib"
 import "core:math/rand"
@@ -10,11 +11,12 @@ import "core:math"
 import "core:slice"
 import "base:runtime"
 
-SCREEN_WIDTH :: 600
-SCREEN_HEIGHT :: 400
+SCREEN_WIDTH :: 1280
+SCREEN_HEIGHT :: 720
 RADIUS :: 4
 BACKGROUND :: rl.BLACK
 FORCE_MULTIPLIER :: 0.003
+COUNT :: 200
 
 DEBUG :: true
 DEBUG_ALPHA :: 50
@@ -41,7 +43,7 @@ Particle :: struct {
 
 Color :: enum {
 	red,
-	// orange,
+	orange,
 	// yellow,
 	green,
 	blue,
@@ -50,6 +52,7 @@ Color :: enum {
 
 color_values := [Color]rl.Color{
     .red = rl.RED,
+    .orange = rl.ORANGE,
     .green = rl.GREEN,
     .blue = rl.BLUE,
 }
@@ -60,27 +63,29 @@ main :: proc() {
 	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Particle Life")
     rl.SetTargetFPS(60)
 
-    seed := rand.uint64()
+    seed: u64 = rand.uint64()
+    // seed: u64 = 14635494763178228967
     fmt.println("seed:", seed)
     rand.reset(seed)
 
     world := World{
-        particles = random_particles(30),
+        particles = random_particles(COUNT),
         factors = sort([]Factor{
             // {le = RADIUS, factor = -4},
-            {le =   5, factor = 0},
-            {le =   7, factor = 0.3},
-            {le =  15, factor = 0.6},
-            {le =  20, factor = 1},
-            {le =  30, factor = 1.5},
+            // {le =   5, factor = 1},
+            // {le =   7, factor = 2.3},
+            {le =  15, factor = 8},
+            // {le =  20, factor = 4},
+            {le =  30, factor = 4},
             {le =  60, factor = 1.2},
-            {le = 100, factor = 1},
-            {le = 150, factor = 0.4},
+            // {le = 100, factor = 1},
+            {le = 150, factor = 0.1},
         }),
         relations = [Color][Color]f32 {
-            .red   = {.red = -1, .green =  2, .blue = -1},
-            .green = {.red = -2, .green =  0, .blue =  6},
-            .blue  = {.red =  2, .green =  3, .blue =  1},
+            .red    = {.red =  1, .orange = 1, .green =  1, .blue =  1},
+            .orange = {.red =  1, .orange = 1, .green =  1, .blue =  1},
+            .green  = {.red =  1, .orange = 1, .green =  1, .blue =  1},
+            .blue   = {.red =  1, .orange = 1, .green =  1, .blue =  1},
         },
     }
 
@@ -140,11 +145,32 @@ force :: proc(from, to: Particle, factors: []Factor, relations: [Color][Color]f3
 }
 
 collide :: proc(this, another: Particle) -> (Particle, Particle) {
-    if linalg.distance(this.pos, another.pos) >= RADIUS {
+    this, another := this, another 
+
+    dist_vec := another.pos - this.pos
+    distance := linalg.length(dist_vec)
+
+    intersection := -(distance - RADIUS * 2)
+
+    if intersection <= 0 {
         return this, another
     }
 
+    inter_vec := (dist_vec/distance) * intersection
 
+    this.pos += -inter_vec / 2
+    another.pos += inter_vec / 2
+
+    return this, another
+}
+
+@(test)
+collide_test :: proc(t: ^testing.T) {
+    before_a, before_b := Particle{pos = {1,1}}, Particle{pos = {3, 1}}
+    after_a, after_b := collide(before_a, before_b)
+
+    testing.expect_value(t, after_a.pos, vec2{-2, 1})
+    testing.expect_value(t, after_b.pos, vec2{6, 1})
 }
 
 teleport :: proc(p: Particle) -> Particle {
