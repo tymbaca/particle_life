@@ -16,9 +16,14 @@ SCREEN_HEIGHT :: 720
 RADIUS :: 4
 BACKGROUND :: rl.BLACK
 FORCE_MULTIPLIER :: 0.003
-COUNT :: 200
+COUNT :: 20
+
+ARROW_HEAD :: 5
+ARROW_MULTIPLIER :: 50
 
 DEBUG :: true
+DEBUG_GRAVITY :: false
+DEBUG_VELOCITY :: true
 DEBUG_ALPHA :: 50
 
 World :: struct {
@@ -73,11 +78,11 @@ main :: proc() {
         factors = sort([]Factor{
             // {le = RADIUS, factor = -4},
             // {le =   5, factor = 1},
-            // {le =   7, factor = 2.3},
-            {le =  15, factor = 8},
-            // {le =  20, factor = 4},
-            {le =  30, factor = 4},
-            {le =  60, factor = 1.2},
+            // {le =   7, factor = 50},
+            {le =  15, factor = 50},
+            {le =  20, factor = 10},
+            {le =  30, factor = 5},
+            {le =  60, factor = 1.5},
             // {le = 100, factor = 1},
             {le = 150, factor = 0.1},
         }),
@@ -94,11 +99,22 @@ main :: proc() {
 		rl.ClearBackground(BACKGROUND)
         rl.DrawFPS(10, 10)
 
-        update(world)
+        check_pause()
+
+        if !paused {
+            update(world)
+        }
         draw(world)
 
 		rl.EndDrawing()
 	}
+}
+
+paused := false
+check_pause :: proc() {
+    if rl.IsKeyPressed(.P) {
+        paused = !paused
+    }
 }
 
 update :: proc(w: World) {
@@ -117,17 +133,53 @@ update :: proc(w: World) {
 }
 
 draw :: proc(w: World) {
+    if paused {
+        rl.DrawText("PAUSED", SCREEN_WIDTH - 50, 10, 10, rl.GRAY)
+    }
+
     for particle in w.particles {
         rl.DrawCircleV(particle.pos, RADIUS, color_values[particle.color])
 
-        when DEBUG { draw_debug(w, particle) }
+        when DEBUG { 
+            draw_debug(w, particle) 
+        }
     }
 }
 
 draw_debug :: proc(w: World, p: Particle) {
-    for f in w.factors {
-        rl.DrawCircleLinesV(p.pos, f.le, {255, 255, 255, DEBUG_ALPHA})
+    color := rl.Color{255, 255, 255, DEBUG_ALPHA}
+
+    when DEBUG_VELOCITY {
+        draw_arrow(p.pos, p.pos + (p.vel * ARROW_MULTIPLIER), color)
     }
+
+    when DEBUG_GRAVITY {
+        for f in w.factors {
+            rl.DrawCircleLinesV(p.pos, f.le, color)
+        }
+    }
+}
+
+draw_arrow :: proc(from, to: vec2, color: rl.Color) {
+    rl.DrawLineV(from, to, color)
+
+    // go to relative
+    rel_to := to - from
+
+    // TODO: decrease ARROW_HEAD if distance is too small
+    back := rel_to - (linalg.normalize(rel_to) * ARROW_HEAD)
+    lwing := rotate_by_deg(back, rel_to, 30)
+    rwing := rotate_by_deg(back, rel_to, -30)
+
+    // return to global
+    lwing += from
+    rwing += from
+
+    // debug
+    // rl.DrawCircleV(lwing, 2, rl.RED)
+    // rl.DrawCircleV(rwing, 2, rl.GREEN)
+
+    rl.DrawTriangle(rwing, to, lwing, color)
 }
 
 force :: proc(from, to: Particle, factors: []Factor, relations: [Color][Color]f32) -> vec2 {
