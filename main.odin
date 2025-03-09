@@ -15,16 +15,16 @@ SCREEN_WIDTH :: 1280
 SCREEN_HEIGHT :: 720
 RADIUS :: 4
 BACKGROUND :: rl.BLACK
-FORCE_MULTIPLIER :: 0.003
-COUNT :: 20
-
-ARROW_HEAD :: 5
-ARROW_MULTIPLIER :: 50
+FORCE_MULTIPLIER :: 0.001
+COUNT :: 50
 
 DEBUG :: true
-DEBUG_GRAVITY :: false
+DEBUG_GRAVITY :: true
+DEBUG_GRAVITY_ALPHA :: 30
 DEBUG_VELOCITY :: true
-DEBUG_ALPHA :: 50
+DEBUG_VELOCITY_ALPHA :: 90
+DEBUG_ARROW_HEAD :: 8
+DEBUG_ARROW_MULTIPLIER :: 30
 
 World :: struct {
     particles: []Particle,
@@ -62,6 +62,45 @@ color_values := [Color]rl.Color{
     .blue = rl.BLUE,
 }
 
+// real life
+relations := [Color][Color]f32 {
+    .red    = {.red =  1, .orange = 1, .green =  1, .blue =  1},
+    .orange = {.red =  1, .orange = 1, .green =  1, .blue =  1},
+    .green  = {.red =  1, .orange = 1, .green =  1, .blue =  1},
+    .blue   = {.red =  1, .orange = 1, .green =  1, .blue =  1},
+}
+
+// // separation
+// relations := [Color][Color]f32 {
+//     .red    = {.red =  1, .orange = -1, .green = -1, .blue = -1},
+//     .orange = {.red = -1, .orange =  1, .green = -1, .blue = -1},
+//     .green  = {.red = -1, .orange = -1, .green =  1, .blue = -1},
+//     .blue   = {.red = -1, .orange = -1, .green = -1, .blue =  1},
+// }
+
+// // train
+// relations := [Color][Color]f32 {
+//     .red    = {.red =  1, .orange =  2, .green = -1, .blue = -2},
+//     .orange = {.red = -2, .orange =  1, .green =  2, .blue = -1},
+//     .green  = {.red = -1, .orange = -2, .green =  1, .blue =  2},
+//     .blue   = {.red =  2, .orange = -1, .green = -2, .blue =  1},
+// }
+
+factors := sort([]Factor{
+    // {le = RADIUS, factor = -4},
+    // {le =   5, factor = 1},
+    // {le =   7, factor = 50},
+    // {le =  15, factor = 60},
+    {le =  20, factor = 200},
+    // {le =  30, factor = 45},
+    {le =  60, factor = 80},
+    {le = 100, factor = 30},
+    {le = 150, factor = 10},
+    {le = 250, factor = 5},
+    {le = 500, factor = 1},
+})
+
+SCREEN_CENTER :: vec2{SCREEN_WIDTH/2, SCREEN_HEIGHT/2}
 
 // MAIN
 main :: proc() {
@@ -74,24 +113,13 @@ main :: proc() {
     rand.reset(seed)
 
     world := World{
-        particles = random_particles(COUNT),
-        factors = sort([]Factor{
-            // {le = RADIUS, factor = -4},
-            // {le =   5, factor = 1},
-            // {le =   7, factor = 50},
-            {le =  15, factor = 50},
-            {le =  20, factor = 10},
-            {le =  30, factor = 5},
-            {le =  60, factor = 1.5},
-            // {le = 100, factor = 1},
-            {le = 150, factor = 0.1},
-        }),
-        relations = [Color][Color]f32 {
-            .red    = {.red =  1, .orange = 1, .green =  1, .blue =  1},
-            .orange = {.red =  1, .orange = 1, .green =  1, .blue =  1},
-            .green  = {.red =  1, .orange = 1, .green =  1, .blue =  1},
-            .blue   = {.red =  1, .orange = 1, .green =  1, .blue =  1},
+        // particles = random_particles(COUNT),
+        particles = {
+            {id = new_id(), pos = SCREEN_CENTER - {10, 0}, vel = {0, -1}},
+            {id = new_id(), pos = SCREEN_CENTER + {10, 0}, vel = {0,  1}},
         },
+        factors = factors,
+        relations = relations,
     }
 
 	for !rl.WindowShouldClose() {
@@ -147,15 +175,13 @@ draw :: proc(w: World) {
 }
 
 draw_debug :: proc(w: World, p: Particle) {
-    color := rl.Color{255, 255, 255, DEBUG_ALPHA}
-
     when DEBUG_VELOCITY {
-        draw_arrow(p.pos, p.pos + (p.vel * ARROW_MULTIPLIER), color)
+        draw_arrow(p.pos, p.pos + (p.vel * DEBUG_ARROW_MULTIPLIER), {255, 255, 255, DEBUG_VELOCITY_ALPHA})
     }
 
     when DEBUG_GRAVITY {
         for f in w.factors {
-            rl.DrawCircleLinesV(p.pos, f.le, color)
+            rl.DrawCircleLinesV(p.pos, f.le, {255, 255, 255, DEBUG_GRAVITY_ALPHA})
         }
     }
 }
@@ -167,7 +193,7 @@ draw_arrow :: proc(from, to: vec2, color: rl.Color) {
     rel_to := to - from
 
     // TODO: decrease ARROW_HEAD if distance is too small
-    back := rel_to - (linalg.normalize(rel_to) * ARROW_HEAD)
+    back := rel_to - (linalg.normalize(rel_to) * DEBUG_ARROW_HEAD)
     lwing := rotate_by_deg(back, rel_to, 30)
     rwing := rotate_by_deg(back, rel_to, -30)
 
