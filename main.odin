@@ -20,13 +20,13 @@ BACKGROUND :: rl.BLACK
 FORCE_MULTIPLIER :: 0.001
 COUNT :: 50
 
-DEBUG :: true
-DEBUG_GRAVITY :: true
-DEBUG_GRAVITY_ALPHA :: 60
-DEBUG_VELOCITY :: true
-DEBUG_VELOCITY_ALPHA :: 90
-DEBUG_ARROW_HEAD :: 8
-DEBUG_ARROW_MULTIPLIER :: 30
+DEBUG := true
+DEBUG_GRAVITY := true
+DEBUG_GRAVITY_ALPHA := 60
+DEBUG_VELOCITY := true
+DEBUG_VELOCITY_ALPHA := 90
+DEBUG_ARROW_HEAD := f32(8)
+DEBUG_ARROW_MULTIPLIER := f32(10)
 
 World :: struct {
     particles: []Particle,
@@ -121,11 +121,11 @@ main :: proc() {
     rand.reset(seed)
 
     world := World{
-        // particles = random_particles(COUNT),
-        particles = {
-            {id = new_id(), pos = SCREEN_CENTER - {10, 0}, vel = {0, -1}},
-            {id = new_id(), pos = SCREEN_CENTER + {10, 0}, vel = {0,  1}},
-        },
+        particles = random_particles(COUNT),
+        // particles = {
+        //     {id = new_id(), pos = SCREEN_CENTER - {10, 0}, vel = {0, -1}},
+        //     {id = new_id(), pos = SCREEN_CENTER + {10, 0}, vel = {0,  1}},
+        // },
         factors = factors,
         relations = relations,
     }
@@ -182,7 +182,7 @@ draw :: proc(w: World) {
     for particle in w.particles {
         rl.DrawCircleV(particle.pos, RADIUS, color_values[particle.color])
 
-        when DEBUG { 
+        if DEBUG { 
             draw_debug(w, particle) 
         }
     }
@@ -192,39 +192,50 @@ draw_ui :: proc(w: ^World) {
     context.allocator = context.temp_allocator
     defer free_all()
 
-    imgui.Begin("Relations")
+    {
+        imgui.Begin("Debug")
+        defer imgui.End()
 
-    for &row, color_a in w.relations {
-        colf_a := imgui.ColorConvertFloat4ToU32(color_u8_to_f32(auto_cast color_values[color_a]))
-        imgui.PushStyleColor(.Header, colf_a)
-
-        if imgui.CollapsingHeader(fmt.caprint(color_a)) {
-            for &val, color_b in row {
-                colf_b := imgui.ColorConvertFloat4ToU32(color_u8_to_f32(auto_cast color_values[color_b]))
-                imgui.PushStyleColor(.SliderGrab, colf_b)
-                imgui.PushStyleColor(.SliderGrabActive, colf_b)
-
-                imgui.SliderFloat(fmt.caprint(color_a, "<>", color_b), &val, -5, 5)
-
-                imgui.PopStyleColor()
-                imgui.PopStyleColor()
-            }
-        }
-
-        imgui.PopStyleColor()
+        imgui.Checkbox("Enabled", &DEBUG)
+        imgui.Checkbox("Velocity", &DEBUG_VELOCITY)
+        imgui.Checkbox("Gravity", &DEBUG_GRAVITY)
+        imgui.SliderFloat("Arrow Size", &DEBUG_ARROW_MULTIPLIER, 0, 50)
     }
 
-    imgui.End()
+    {
+        imgui.Begin("Relations")
+        defer imgui.End()
+
+        for &row, color_a in w.relations {
+            colf_a := imgui.ColorConvertFloat4ToU32(color_u8_to_f32(auto_cast color_values[color_a]))
+            imgui.PushStyleColor(.Header, colf_a)
+
+            if imgui.CollapsingHeader(fmt.caprint(color_a)) {
+                for &val, color_b in row {
+                    colf_b := imgui.ColorConvertFloat4ToU32(color_u8_to_f32(auto_cast color_values[color_b]))
+                    imgui.PushStyleColor(.SliderGrab, colf_b)
+                    imgui.PushStyleColor(.SliderGrabActive, colf_b)
+
+                    imgui.SliderFloat(fmt.caprint(color_a, "<>", color_b), &val, -5, 5)
+
+                    imgui.PopStyleColor()
+                    imgui.PopStyleColor()
+                }
+            }
+
+            imgui.PopStyleColor()
+        }
+    }
 }
 
 draw_debug :: proc(w: World, p: Particle) {
-    when DEBUG_VELOCITY {
-        draw_arrow(p.pos, p.pos + (p.vel * DEBUG_ARROW_MULTIPLIER), {255, 255, 255, DEBUG_VELOCITY_ALPHA})
+    if DEBUG_VELOCITY {
+        draw_arrow(p.pos, p.pos + (p.vel * DEBUG_ARROW_MULTIPLIER), {255, 255, 255, auto_cast DEBUG_VELOCITY_ALPHA})
     }
 
-    when DEBUG_GRAVITY {
+    if DEBUG_GRAVITY {
         for f in w.factors {
-            rl.DrawCircleLinesV(p.pos, f.le, {255, 255, 255, DEBUG_GRAVITY_ALPHA})
+            rl.DrawCircleLinesV(p.pos, f.le, {255, 255, 255, auto_cast DEBUG_GRAVITY_ALPHA})
         }
     }
 }
