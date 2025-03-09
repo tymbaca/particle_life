@@ -195,11 +195,23 @@ draw_ui :: proc(w: ^World) {
     imgui.Begin("Relations")
 
     for &row, color_a in w.relations {
+        colf_a := imgui.ColorConvertFloat4ToU32(color_u8_to_f32(auto_cast color_values[color_a]))
+        imgui.PushStyleColor(.Header, colf_a)
+
         if imgui.CollapsingHeader(fmt.caprint(color_a)) {
             for &val, color_b in row {
-                imgui.DragFloat(fmt.caprint(color_b), &val)
+                colf_b := imgui.ColorConvertFloat4ToU32(color_u8_to_f32(auto_cast color_values[color_b]))
+                imgui.PushStyleColor(.SliderGrab, colf_b)
+                imgui.PushStyleColor(.SliderGrabActive, colf_b)
+
+                imgui.SliderFloat(fmt.caprint(color_a, "<>", color_b), &val, -5, 5)
+
+                imgui.PopStyleColor()
+                imgui.PopStyleColor()
             }
         }
+
+        imgui.PopStyleColor()
     }
 
     imgui.End()

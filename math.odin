@@ -2,6 +2,7 @@ package main
 
 import "core:math"
 import "core:math/linalg"
+import rl "vendor:raylib"
 
 rotate_by_deg :: proc(point, origin: vec2, angle_deg: f32) -> vec2 {
     vec := point - origin // {-1, 0}
@@ -18,3 +19,12 @@ rotate_by_deg :: proc(point, origin: vec2, angle_deg: f32) -> vec2 {
     return new_vec + origin
 }
 
+color_u8_to_f32 :: proc(col: [4]u8) -> [4]f32 {
+    colf: [4]f32
+
+    for u, i in col {
+        colf[i] = f32(u) / 255
+    }
+
+    return colf
+}
