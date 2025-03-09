@@ -1,5 +1,7 @@
 package main
 
+import imgui_rl "lib/imgui/imgui_impl_raylib"
+import imgui "lib/imgui"
 import "core:testing"
 import "core:fmt"
 // import "lib/ecs"
@@ -20,7 +22,7 @@ COUNT :: 50
 
 DEBUG :: true
 DEBUG_GRAVITY :: true
-DEBUG_GRAVITY_ALPHA :: 30
+DEBUG_GRAVITY_ALPHA :: 60
 DEBUG_VELOCITY :: true
 DEBUG_VELOCITY_ALPHA :: 90
 DEBUG_ARROW_HEAD :: 8
@@ -107,6 +109,12 @@ main :: proc() {
 	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Particle Life")
     rl.SetTargetFPS(60)
 
+    imgui.CreateContext(nil)
+    defer imgui.DestroyContext(nil)
+    imgui_rl.init()
+    defer imgui_rl.shutdown()
+    imgui_rl.build_font_atlas()
+
     seed: u64 = rand.uint64()
     // seed: u64 = 14635494763178228967
     fmt.println("seed:", seed)
@@ -126,6 +134,9 @@ main :: proc() {
 		rl.BeginDrawing()
 		rl.ClearBackground(BACKGROUND)
         rl.DrawFPS(10, 10)
+        imgui_rl.process_events()
+        imgui_rl.new_frame()
+        imgui.NewFrame()
 
         check_pause()
 
@@ -133,7 +144,10 @@ main :: proc() {
             update(world)
         }
         draw(world)
+        draw_ui(&world)
 
+        imgui.Render()
+        imgui_rl.render_draw_data(imgui.GetDrawData())
 		rl.EndDrawing()
 	}
 }
@@ -172,6 +186,23 @@ draw :: proc(w: World) {
             draw_debug(w, particle) 
         }
     }
+}
+
+draw_ui :: proc(w: ^World) {
+    context.allocator = context.temp_allocator
+    defer free_all()
+
+    imgui.Begin("Relations")
+
+    for &row, color_a in w.relations {
+        if imgui.CollapsingHeader(fmt.caprint(color_a)) {
+            for &val, color_b in row {
+                imgui.DragFloat(fmt.caprint(color_b), &val)
+            }
+        }
+    }
+
+    imgui.End()
 }
 
 draw_debug :: proc(w: World, p: Particle) {
